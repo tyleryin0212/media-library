@@ -1,5 +1,6 @@
-package problem2;
+package in_memory_domain;
 
+import com.tyleryin.medialibrary.in_memory_domain.Name;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

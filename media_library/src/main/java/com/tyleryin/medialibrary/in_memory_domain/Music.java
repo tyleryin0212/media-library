@@ -1,4 +1,4 @@
-package problem2;
+package com.tyleryin.medialibrary.in_memory_domain;
 
 /**
  * The {@code Music} class represents a musical recording or composition in the library catalog.

@@ -1,4 +1,4 @@
-package problem2;
+package com.tyleryin.medialibrary.in_memory_domain;
 
 /**
  * The class represents the first name and last name for possible individuals such as authors and recording artists.

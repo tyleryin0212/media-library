@@ -1,4 +1,4 @@
-package problem2;
+package com.tyleryin.medialibrary.in_memory_domain;
 
 /**
  * The interface represents any entity that can create an {@link Item} in the library's catalog. A creator has a name

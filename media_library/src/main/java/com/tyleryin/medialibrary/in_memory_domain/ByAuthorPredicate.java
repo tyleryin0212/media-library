@@ -1,4 +1,4 @@
-package problem2;
+package com.tyleryin.medialibrary.in_memory_domain;
 
 import java.util.Objects;
 

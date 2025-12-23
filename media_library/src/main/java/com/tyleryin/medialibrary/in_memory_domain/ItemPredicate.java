@@ -1,4 +1,4 @@
-package problem2;
+package com.tyleryin.medialibrary.in_memory_domain;
 
 public interface ItemPredicate {
     boolean matchesBook(Book b);

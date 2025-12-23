@@ -1,5 +1,9 @@
-package problem2;
+package in_memory_domain;
 
+import com.tyleryin.medialibrary.in_memory_domain.Band;
+import com.tyleryin.medialibrary.in_memory_domain.Music;
+import com.tyleryin.medialibrary.in_memory_domain.Name;
+import com.tyleryin.medialibrary.in_memory_domain.RecordingArtist;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
