@@ -1,19 +1,28 @@
 package com.tyleryin.medialibrary.service;
 
+import com.tyleryin.medialibrary.DTO.CreateItemRequest;
+import com.tyleryin.medialibrary.DTO.ItemResponse;
+import com.tyleryin.medialibrary.DTO.ItemType;
+import com.tyleryin.medialibrary.DTO.UpdateItemRequest;
+import com.tyleryin.medialibrary.in_memory_domain.Author;
+import com.tyleryin.medialibrary.in_memory_domain.Book;
 import com.tyleryin.medialibrary.in_memory_domain.Creator;
 import com.tyleryin.medialibrary.in_memory_domain.Item;
+import com.tyleryin.medialibrary.in_memory_domain.Music;
+import com.tyleryin.medialibrary.in_memory_domain.Name;
+import com.tyleryin.medialibrary.in_memory_domain.RecordingArtist;
+import com.tyleryin.medialibrary.persistence.entity.AuthorEntity;
 import com.tyleryin.medialibrary.persistence.entity.CreatorEntity;
 import com.tyleryin.medialibrary.persistence.entity.ItemEntity;
 import com.tyleryin.medialibrary.persistence.mapper.CreatorMapper;
 import com.tyleryin.medialibrary.persistence.repo.CreatorRepository;
 import com.tyleryin.medialibrary.persistence.repo.ItemRepository;
-import com.tyleryin.medialibrary.service.ItemPatch;
-import com.tyleryin.medialibrary.service.ItemService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class JpaItemService implements ItemService {
@@ -28,22 +37,23 @@ public class JpaItemService implements ItemService {
 
     @Override
     @Transactional
-    public Item createItem(Item item) {
+    public ItemResponse createItem(CreateItemRequest request) {
+        Item item = toDomain(request);
         CreatorEntity creatorEntity = upsertCreator(item.getCreator());
         ItemEntity saved = itemRepo.save(new ItemEntity(item.getId(), creatorEntity, item.getTitle(), item.getYear()));
-        return toDomain(saved);
+        return toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Item> getById(UUID id) {
-        return itemRepo.findById(id).map(this::toDomain);
+    public Optional<ItemResponse> getById(UUID id) {
+        return itemRepo.findById(id).map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Item> getAll() {
-        return itemRepo.findAll().stream().map(this::toDomain).toList();
+    public List<ItemResponse> getAll() {
+        return itemRepo.findAll().stream().map(this::toResponse).toList();
     }
 
     @Override
@@ -56,22 +66,17 @@ public class JpaItemService implements ItemService {
 
     @Override
     @Transactional
-    public Optional<Item> updateById(UUID id, ItemPatch patch) {
+    public Optional<ItemResponse> updateById(UUID id, UpdateItemRequest patch) {
         Optional<ItemEntity> opt = itemRepo.findById(id);
         if (opt.isEmpty()) return Optional.empty();
 
         ItemEntity e = opt.get();
 
-        if (patch.title() != null) e.setTitle(patch.title());
-        if (patch.year() != null) e.setYear(patch.year());
-
-        if (patch.creator() != null) {
-            CreatorEntity newCreator = upsertCreator(patch.creator());
-            e.setCreator(newCreator);
-        }
+        if (patch.getTitle() != null) e.setTitle(patch.getTitle());
+        if (patch.getYear() != null) e.setYear(patch.getYear());
 
         ItemEntity saved = itemRepo.save(e);
-        return Optional.of(toDomain(saved));
+        return Optional.of(toResponse(saved));
     }
 
     private CreatorEntity upsertCreator(Creator creator) {
@@ -79,21 +84,42 @@ public class JpaItemService implements ItemService {
                 .orElseGet(() -> creatorRepo.save(CreatorMapper.toEntity(creator)));
     }
 
-    /**
-     * Entity -> Domain mapping.
-     *
-     * IMPORTANT: your domain Creator subtypes (Author/RecordingArtist/Band) may need structured fields (Name).
-     * But DB currently stores only displayName + id. So for reads, we return a simple Creator implementation.
-     */
-    private Item toDomain(ItemEntity e) {
-        CreatorEntity c = e.getCreator();
-        Creator creator = new PersistedCreator(c.getId(), c.getDisplayName()); // see below
-        return new Item(e.getId(), creator, e.getTitle(), e.getYear());
+    private Item toDomain(CreateItemRequest request) {
+        Name name = new Name(request.getFirstName(), request.getLastName());
+        return switch (request.getType()) {
+            case BOOK -> new Book(new Author(name), request.getTitle(), request.getYear());
+            case MUSIC -> new Music(new RecordingArtist(name), request.getTitle(), request.getYear());
+        };
     }
 
-    /** Minimal read-model creator to avoid losing info / forcing first-last parsing. */
-    private record PersistedCreator(UUID id, String name) implements Creator {
-        @Override public UUID getId() { return id; }
-        @Override public String getName() { return name; }
+    private Item toDomain(ItemEntity e) {
+        CreatorEntity c = e.getCreator();
+        if (c instanceof AuthorEntity) {
+            return new Book(e.getId(), new Author(new Name(c.getDisplayName(), ""), c.getId()), e.getTitle(), e.getYear());
+        }
+        return new Music(e.getId(), new RecordingArtist(new Name(c.getDisplayName(), ""), c.getId()), e.getTitle(), e.getYear());
+    }
+
+    private ItemResponse toResponse(ItemEntity entity) {
+        return toResponse(toDomain(entity));
+    }
+
+    private ItemResponse toResponse(Item item) {
+        ItemResponse response = new ItemResponse();
+        response.setId(item.getId());
+        response.setTitle(item.getTitle());
+        response.setYear(item.getYear());
+
+        if (item instanceof Book book) {
+            response.setType(ItemType.BOOK);
+            response.setFirstName(book.getAuthor().getName());
+            response.setLastName("");
+        } else if (item instanceof Music music) {
+            response.setType(ItemType.MUSIC);
+            response.setFirstName(music.getCreator().getName());
+            response.setLastName("");
+        }
+
+        return response;
     }
 }
