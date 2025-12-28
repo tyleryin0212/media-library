@@ -4,16 +4,8 @@ import com.tyleryin.medialibrary.DTO.CreateItemRequest;
 import com.tyleryin.medialibrary.DTO.ItemResponse;
 import com.tyleryin.medialibrary.DTO.ItemType;
 import com.tyleryin.medialibrary.DTO.UpdateItemRequest;
-import com.tyleryin.medialibrary.in_memory_domain.Author;
-import com.tyleryin.medialibrary.in_memory_domain.Book;
-import com.tyleryin.medialibrary.in_memory_domain.Creator;
-import com.tyleryin.medialibrary.in_memory_domain.Item;
-import com.tyleryin.medialibrary.in_memory_domain.Music;
-import com.tyleryin.medialibrary.in_memory_domain.Name;
-import com.tyleryin.medialibrary.in_memory_domain.RecordingArtist;
-import com.tyleryin.medialibrary.persistence.entity.AuthorEntity;
-import com.tyleryin.medialibrary.persistence.entity.CreatorEntity;
-import com.tyleryin.medialibrary.persistence.entity.ItemEntity;
+import com.tyleryin.medialibrary.in_memory_domain.*;
+import com.tyleryin.medialibrary.persistence.entity.*;
 import com.tyleryin.medialibrary.persistence.mapper.CreatorMapper;
 import com.tyleryin.medialibrary.persistence.repo.CreatorRepository;
 import com.tyleryin.medialibrary.persistence.repo.ItemRepository;
@@ -96,10 +88,37 @@ public class JpaItemService implements ItemService {
 
     private Item toDomain(ItemEntity e) {
         CreatorEntity c = e.getCreator();
-        if (c instanceof AuthorEntity) {
-            return new Book(e.getId(), new Author(new Name(c.getDisplayName(), ""), c.getId()), e.getTitle(), e.getYear());
+
+        if (c instanceof AuthorEntity ae) {
+            Name name = new Name(ae.getFirstName(), ae.getLastName());
+            return new Book(
+                    e.getId(),
+                    new Author(name, ae.getId()),
+                    e.getTitle(),
+                    e.getYear()
+            );
         }
-        return new Music(e.getId(), new RecordingArtist(new Name(c.getDisplayName(), ""), c.getId()), e.getTitle(), e.getYear());
+
+        if (c instanceof RecordingArtistEntity rae) {
+            Name name = new Name(rae.getFirstName(), rae.getLastName());
+            return new Music(
+                    e.getId(),
+                    new RecordingArtist(name, rae.getId()),
+                    e.getTitle(),
+                    e.getYear()
+            );
+        }
+
+        if (c instanceof BandEntity be) {
+            return new Music(
+                    e.getId(),
+                    new Band(be.getDisplayName().trim(), be.getId(), List.of()),
+                    e.getTitle(),
+                    e.getYear()
+            );
+        }
+
+        throw new IllegalStateException("Unknown creator entity: " + c.getClass());
     }
 
     private ItemResponse toResponse(ItemEntity entity) {
